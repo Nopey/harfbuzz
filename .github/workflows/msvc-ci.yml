@@ -17,14 +17,19 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-2019, windows-latest]
+        compiler: [msvc, clang-cl]
         include:
-          - name: msvc-2019-x86
-            os: windows-2019
+          - os: windows-2019
             ARCH: x86
-          - name: msvc-2019-amd64
-            os: windows-latest
+          - os: windows-latest
             ARCH: amd64
-    name: ${{ matrix.name }}
+          - os: windows-2019
+            compiler: clang-cl
+            CROSSFILE: --cross-file .ci/msvc-llvm-x86-cross-file.txt
+          - os: windows-latest
+            compiler: clang-cl
+            CC: clang-cl
+    name: ${{ matrix.compiler }}-${{ matrix.ARCH }}
 
     steps:
     - name: Checkout
@@ -33,7 +38,7 @@ jobs:
       uses: hendrikmuhs/ccache-action@faf867a11c028c0b483fb2ae72b6fc8f7d842714 # v1.2.12
       with:
         variant: sccache
-        key: ${{ github.job }}-${{ matrix.os }}-${{ matrix.ARCH }}
+        key: ${{ github.job }}-${{ matrix.os }}-${{ matrix.ARCH }}-${{ matrix.compiler }}
     - name: Setup Python
       uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
       with:
@@ -54,7 +59,11 @@ jobs:
             -Dglib=enabled `
             -Dfreetype=enabled `
             -Dgdi=enabled `
-            -Ddirectwrite=enabled
+            -Ddirectwrite=enabled `
+            ${{ matrix.CROSSFILE }}
+      env:
+        CC: ${{ matrix.CC }}
+        CXX: ${{ matrix.CC }}
     - name: Build
       run: meson compile -Cbuild
     - name: Test
